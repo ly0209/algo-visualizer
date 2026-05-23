@@ -9,8 +9,8 @@ export default function CodePanel({ code, currentLine }: Props) {
   return (
     <div className="h-full overflow-auto rounded-lg bg-gray-900 p-4 font-mono text-sm leading-6 whitespace-pre">
       {lines.map((line, i) => {
-        const lineNum = i + 1;
-        const isActive = lineNum === currentLine;
+        const lineNum = i + 1;//当前行号
+        const isActive = lineNum === currentLine;//是否高亮布尔类型
         return (
           <div
             key={i}

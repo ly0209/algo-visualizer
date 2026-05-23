@@ -1,5 +1,5 @@
 import type { AlgorithmData, AlgorithmStep, GraphNode } from "../types/algorithm";
-
+// 冒泡排序
 const BUBBLE_SORT_CODE = `void bubble_sort(int arr[], int n) {
     for (int i = 0; i < n - 1; i++) {
         for (int j = 0; j < n - 1 - i; j++) {
@@ -101,15 +101,188 @@ export function generateBubbleSortSteps(inputArr: number[]): AlgorithmData {
 
   return {
     id: `bubble-sort-${Date.now()}`,
-    name: "冒泡排序（自定义）",
+    name: "冒泡排序",
     category: "sorting",
     language: "C",
     code: BUBBLE_SORT_CODE,
     steps,
   };
 }
-
+// 快速排序
 /** 生成随机数组 */
+
+const QUICK_SORT_CODE = `void quick_sort(int arr[], int low, int high) {
+    if (low < high) {
+        int pivot = arr[high];
+        int i = low - 1;
+        for (int j = low; j < high; j++) {
+            if (arr[j] <= pivot) {
+                i++;
+                int temp = arr[i];
+                arr[i] = arr[j];
+                arr[j] = temp;
+            }
+        }
+        int temp = arr[i + 1];
+        arr[i + 1] = arr[high];
+        arr[high] = temp;
+        int pi = i + 1;
+        quick_sort(arr, low, pi - 1);
+        quick_sort(arr, pi + 1, high);
+    }
+}`;
+
+/** 构建节点覆盖数组，范围内可操作，范围外已排序（绿色） */
+function nodeOverrides(
+  len: number,
+  low: number,
+  high: number,
+  specials: Record<number, Partial<import("../types/algorithm").GraphNode>>
+): Partial<import("../types/algorithm").GraphNode>[] {
+  return Array.from({ length: len }, (_, id) => {
+    if (id < low || id > high) return { color: "#22c55e" };
+    return specials[id] || {};
+  });
+}
+
+export function generateQuickSortSteps(inputArr: number[]): AlgorithmData {
+  const n = inputArr.length;
+  const arr = [...inputArr];
+  let stepIdx = 0;
+  const steps: AlgorithmStep[] = [];
+
+  const push = (
+    line: number,
+    desc: string,
+    vars: Record<string, unknown>,
+    nodes: Partial<GraphNode>[]
+  ) => {
+    const edges = nodes.slice(0, -1).map((_, i) => {
+      const isComparing = nodes[i]?.highlight && nodes[i + 1]?.highlight;
+      return { from: i, to: i + 1, ...(isComparing ? { color: "#ef4444" } : {}) };
+    });
+    steps.push({
+      step: stepIdx++,
+      line,
+      description: desc,
+      variables: vars,
+      graph_state: {
+        nodes: arr.map((v, id) => ({ id, value: v, ...(nodes[id] || {}) })),
+        edges,
+      },
+    });
+  };
+
+  push(1, `函数调用：quick_sort(arr, 0, ${n - 1})，数组 [${arr}]`,
+    { arr: [...arr], low: 0, high: n - 1, pivot: null, i: null, j: null, pi: null },
+    []);
+
+  /** 递归模拟快速排序 */
+  function simulate(low: number, high: number) {
+    if (low >= high) {
+      push(2, `low(${low}) < high(${high}) 不成立，返回`,
+        { arr: [...arr], low, high, pivot: null, i: null, j: null, pi: null },
+        nodeOverrides(n, low, high, {}));
+      return;
+    }
+
+    push(2, `low(${low}) < high(${high})，进入分区排序`,
+      { arr: [...arr], low, high, pivot: null, i: null, j: null, pi: null },
+      nodeOverrides(n, low, high, {}));
+
+    const pivot = arr[high];
+    push(3, `选择 pivot = arr[${high}] = ${pivot}`,
+      { arr: [...arr], low, high, pivot, i: null, j: null, pi: null },
+      nodeOverrides(n, low, high, { [high]: { color: "#a855f7" } }));
+
+    let i = low - 1;
+    push(4, `i = low - 1 = ${i}`,
+      { arr: [...arr], low, high, pivot, i, j: null, pi: null },
+      nodeOverrides(n, low, high, { [high]: { color: "#a855f7" } }));
+
+    for (let j = low; j < high; j++) {
+      push(5, `j=${j}，arr[${j}]=${arr[j]}，比较与 pivot(${pivot}) 的大小`,
+        { arr: [...arr], low, high, pivot, i, j, pi: null },
+        nodeOverrides(n, low, high, { [j]: { highlight: true }, [high]: { color: "#a855f7" } }));
+
+      if (arr[j] <= pivot) {
+        i++;
+
+        if (i !== j) {
+          push(6, `arr[${j}] <= pivot(${pivot})，i++=${i}，交换 arr[${i}]<->arr[${j}]`,
+            { arr: [...arr], low, high, pivot, i, j, pi: null },
+            nodeOverrides(n, low, high, {
+              [i]: { swap: true },
+              [j]: { swap: true },
+              [high]: { color: "#a855f7" },
+            }));
+
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+
+          push(10, `交换完成 → [${arr}]`,
+            { arr: [...arr], low, high, pivot, i, j, pi: null },
+            nodeOverrides(n, low, high, {
+              [i]: { highlight: true },
+              [j]: { highlight: true },
+              [high]: { color: "#a855f7" },
+            }));
+        } else {
+          push(6, `arr[${j}] <= pivot(${pivot})，i++=${i}（j==i，无需交换）`,
+            { arr: [...arr], low, high, pivot, i, j, pi: null },
+            nodeOverrides(n, low, high, { [j]: { highlight: true }, [high]: { color: "#a855f7" } }));
+        }
+      } else {
+        push(6, `arr[${j}] > pivot(${pivot})，无需交换`,
+          { arr: [...arr], low, high, pivot, i, j, pi: null },
+          nodeOverrides(n, low, high, { [j]: { highlight: true }, [high]: { color: "#a855f7" } }));
+      }
+    }
+
+    const pi = i + 1;
+    if (pi !== high) {
+      push(13, `遍历结束，将 pivot(${pivot}) 放到正确位置：交换 arr[${pi}]<->arr[${high}]`,
+        { arr: [...arr], low, high, pivot, i, j: null, pi },
+        nodeOverrides(n, low, high, {
+          [pi]: { swap: true },
+          [high]: { swap: true, color: "#a855f7" },
+        }));
+
+      [arr[pi], arr[high]] = [arr[high], arr[pi]];
+    }
+
+    push(16, `pivot(${pivot}) 已归位！pi=${pi}`,
+      { arr: [...arr], low, high, pivot, i, j: null, pi },
+      nodeOverrides(n, low, high, { [pi]: { color: "#a855f7" } }));
+
+    // 左递归
+    push(17, `递归左半部分 quick_sort(arr, ${low}, ${pi - 1})`,
+      { arr: [...arr], low, high: pi - 1, pivot: null, i: null, j: null, pi },
+      nodeOverrides(n, low, pi - 1, { [pi]: { color: "#a855f7" } }));
+    simulate(low, pi - 1);
+
+    // 右递归
+    push(18, `递归右半部分 quick_sort(arr, ${pi + 1}, ${high})`,
+      { arr: [...arr], low: pi + 1, high, pivot: null, i: null, j: null, pi },
+      nodeOverrides(n, pi + 1, high, {}));
+    simulate(pi + 1, high);
+  }
+
+  simulate(0, n - 1);
+
+  // Done
+  push(19, `排序完成！数组已有序 [${arr}]`,
+    { arr: [...arr], low: null, high: null, pivot: null, i: null, j: null, pi: null },
+    Array.from({ length: n }, () => ({ color: "#22c55e" })));
+
+  return {
+    id: `quick-sort-${Date.now()}`,
+    name: "快速排序",
+    category: "sorting",
+    language: "C",
+    code: QUICK_SORT_CODE,
+    steps,
+  };
+}
 export function randomArray(length: number, max = 99): number[] {
   return Array.from({ length }, () => Math.floor(Math.random() * max) + 1);
 }

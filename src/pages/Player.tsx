@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { usePlayer } from "../hooks/usePlayer";
 import { getPresetData } from "../data/presets";
-import { generateBubbleSortSteps } from "../services/stepGenerator";
+import { generateBubbleSortSteps, generateQuickSortSteps } from "../services/stepGenerator";
 import NodeGraph from "../components/algorithm/NodeGraph";
 import CodePanel from "../components/algorithm/CodePanel";
 import VariablePanel from "../components/algorithm/VariablePanel";
@@ -68,11 +68,18 @@ export default function Player() {
 
   // 处理自定义数组
   const handleCustomArray = useCallback((arr: number[]) => {
-    const newData = generateBubbleSortSteps(arr);
+    let newData: AlgorithmData;
+    if (algorithmData?.id === "quick-sort") {
+      newData = generateQuickSortSteps(arr);
+    } else {
+      // 默认为冒泡排序
+      newData = generateBubbleSortSteps(arr);
+    }
     setAlgorithmData(newData);
-  }, []);
+  }, [algorithmData?.id]);
 
-  const isCustom = algorithmData?.id?.startsWith("bubble-sort-") && algorithmData?.id !== "bubble-sort";
+  const isCustom = (algorithmData?.id?.startsWith("bubble-sort-") && algorithmData?.id !== "bubble-sort") ||
+    (algorithmData?.id?.startsWith("quick-sort-") && algorithmData?.id !== "quick-sort");
 
   // 算法不存在
   if (!algorithmData) {
